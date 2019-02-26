@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport"
+		  content="initial-scale=1, maximum-scale=1, user-scalable=no">
+	<meta name="format-detection" content="telephone=no">
+	<title>聊天室</title>
+	<link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600" rel="stylesheet">
+	<link rel="stylesheet" href="__PUBLIC__/css/reset.min.css">
+	<link rel="stylesheet" href="__PUBLIC__/css/style2.css">
+	<script src="__PUBLIC__/js/jquery-1.11.3.min.js"></script>
+
+	<style>
+		.mask {
+			position: absolute; top: 0px; filter: alpha(opacity=60); background-color: #777;
+			z-index: 1002; left: 0px;
+			opacity:0.9; -moz-opacity:0.9;
+		}
+	</style>
+	<script type="text/javascript">
+        function showMask(){
+            $("#mask").css("height",$(document).height());
+            $("#mask").css("width",$(document).width());
+            $("#mask").show();
+        }
+        function hideMask(){
+            $("#mask").hide();
+        }
+
+	</script>
+</head>
+<body>
+<div class="wrapper">
+	<div class="container">
+		<div class="left" style="overflow: auto;">
+			<div class="top">
+				聊天室成员
+			</div>
+			<ul class="people">
+				<{foreach $users as $key=>$value}>
+				<li class="person" data-chat="person1">
+					<img src="./etalk/img/thomas.jpg" alt="" />
+					<span class="name"><{$value['name']}></span>
+					<span class="time">2:09 PM</span>
+				</li>
+				<{/foreach}>
+
+			</ul>
+		</div>
+		<div class="right">
+			<div class="top"><span>欢迎来到聊天室</span><a href="/index.php?c=index&a=loginout">注销</a></div>
+			<div class="chat" data-chat="person1" id="con" name="con" style="display:block;overflow:auto">
+			</div>
+			<div class="write">
+				<a href="javascript:;" class="write-link attach"></a>
+				<input type="text" id="say" name="say" />
+				<a href="javascript:;" class="write-link smiley" id="a" name="a"></a>
+				<a href="javascript:;" class="write-link send"  id="send" name="send"></a>
+			</div>
+		</div>
+	</div>
+
+</div>
+<div id="mask" class="mask"></div>
+<script>
+    $(function () {
+
+        var x = 12000;
+        var y = 1;
+        //var username = parseInt(Math.random() * (x - y + 1) + y);
+        var username = '<{$username}>';
+        sessionStorage.setItem('username', username);
+
+        function setName(a) {
+            $('#username').html(a);
+        }
+
+        // websocket
+        let address = 'ws://<{$CLIENT_CONNECT_ADDR}>:<{$CLIENT_CONNECT_PORT}>';
+        let webSocket = new WebSocket(address);
+        webSocket.onerror = function (event) {
+            alert('服务器连接错误，请稍后重试');
+        };
+
+        webSocket.onopen = function (event) {
+            if(!sessionStorage.getItem('username')) {
+                alert('用户名错误');
+            }else {
+                username = sessionStorage.getItem('username')
+                //setName(username);
+                webSocket.send(JSON.stringify({
+                    'message': username,
+                    'type': 'init'
+                }));
+            }
+        };
+
+        /*if(username) {
+
+            webSocket.send(JSON.stringify({
+                'message': username,
+                'type': 'init'
+            }));
+        }*/
+        webSocket.onmessage = function (event) {
+            console.log(event);
+            let data = JSON.parse(event.data);
+            if (data.type == 100) {
+                alert(data.message);
+                sessionStorage['username'] = '';
+                location.reload();
+            }
+            if(data.username != sessionStorage.getItem('username')) {
+                if (data.type == 1) {
+                    $('#con').append('<div class="usernameleft">系统提示：</div><div class="bubble you">' + data.message + '</div>');
+                } else if (data.type == 2) {
+                    $('#con').append('<div class="usernameleft">' +  data.username + '</div><div class="bubble you">'+ data.message + '</div>');
+                }
+                else if (data.type == 3) {
+                    showMask();
+                    alert('ddddddddddddddd');
+                }
+            }
+            var now = new Date();
+            var div = document.getElementById('con');
+            div.scrollTop = div.scrollHeight;
+
+        };
+        webSocket.onclose = function (event) {
+            //alert('散了吧，服务器都关了');
+        };
+
+
+        //触发发送消息事件
+        $("#send").click(function () {
+            let message = $("#say").val();
+            if (message) {
+                $('#con').append('<div class="usernameright">' +  sessionStorage.getItem('username') + '</div><div class="bubble me">' + message + '</div>');
+                webSocket.send(JSON.stringify({
+                    'message': message,
+                    'type': 'chat'
+                }));
+                $("#say").val('');
+            }
+            else{
+                alert('内容不能为空');
+            }
+        });
+
+
+
+    });
+</script>
+</body>
+</html>
+
+
